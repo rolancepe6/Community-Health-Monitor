@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#3498db">
+<link rel="icon" href="icon-192.png">
+
+<title>Community Health Monitor</title>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap');
+
+body {
+  font-family: 'Nunito', sans-serif;
+  text-align: center;
+  background: #f0f4f8;
+  margin: 0;
+  color: #333;
+}
+
+h2 {
+  margin-top: 20px;
+  color: #2c3e50;
+}
+
+.wrap {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  flex-wrap: wrap;
+  padding: 20px;
+}
+
+.box {
+  background: #fff;
+  padding: 25px;
+  border-radius: 12px;
+  width: 320px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.box:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+}
+
+#meter {
+  width: 100%;
+  height: 200px;
+  border: 2px solid #34495e;
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+  background: #ecf0f1;
+}
+
+#level {
+  background: #2ecc71;
+  width: 100%;
+  position: absolute;
+  bottom: 0;
+  height: 0%;
+  transition: height 0.3s ease, background 0.3s ease;
+}
+
+#level.high {
+  background: #e74c3c;
+}
+
+#alert {
+  display: none;
+  background: #e74c3c;
+  color: #fff;
+  padding: 12px;
+  font-weight: bold;
+  border-radius: 6px;
+  margin: 10px auto;
+  width: fit-content;
+}
+
+.btn {
+  padding: 10px 16px;
+  margin: 5px;
+  border: none;
+  background: #3498db;
+  color: white;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.2s ease;
+}
+
+.btn:hover {
+  background: #2980b9;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+th, td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: center;
+}
+
+th {
+  background: #3498db;
+  color: white;
+}
+
+@media (max-width: 768px) {
+  .box {
+    width: 90%;
+  }
+}
+
+/* dark mode */
+body.dark {
+  background: #2c3e50;
+  color: #ecf0f1;
+}
+body.dark .box {
+  background: #34495e;
+  color: #ecf0f1;
+}
+body.dark #meter {
+  border-color: #ecf0f1;
+  background: #2c3e50;
+}
+body.dark #alert {
+  background: #c0392b;
+}
+body.dark th {
+  background: #2980b9;
+}
+body.dark .btn {
+  background: #2980b9;
+}
+body.dark .btn:hover {
+  background: #2471a3;
+}
+
+/* animations */
+@keyframes alert-pulse {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+#alert.show {
+  display: block;
+  animation: alert-pulse 1s infinite;
+}
+
+/* table stripes */
+tbody tr:nth-child(odd) {
+  background: rgba(0,0,0,0.02);
+}
+</style>
+
+</head>
+<body>
+
+<header class="header">
+  <h1>Community Health Monitor</h1>
+  <button id="theme-toggle" class="btn" title="Toggle theme">🌙</button>
+</header>  
+
+
+<div id="alert">⚠ HEALTH ALERT! MANY CASES REPORTED</div>
+
+<div class="wrap">
+
+<div class="box">
+
+<h3>Health Sensor</h3>
+
+<div id="meter">
+<div id="level"></div>
+</div>
+
+<p>Cases: <span id="txt">0</span>% | <span id="status">LOW</span></p>
+
+<select id="disease">
+<option>Flu</option>
+<option>Dengue</option>
+<option>Fever</option>
+<option>COVID</option>
+<option>Other</option>
+</select>
+
+<br>
+
+<button class="btn" onclick="reportCase()">➕ Report Case</button>
+<button class="btn" onclick="reset()">🔄 Reset</button>
+
+</div>
+
+
+<div class="box">
+
+<h3>Health Reports</h3>
+
+<div style="overflow-x:auto;">
+<table>
+
+<thead>
+<tr>
+<th>Time</th>
+<th>%</th>
+<th>Disease</th>
+<th>Action</th>
+</tr>
+</thead>
+
+<tbody id="table"></tbody>
+
+</table>
+</div>
+
+<button class="btn" onclick="clearAll()">Clear All</button>
+
+</div>
+
+</div>
+
+<script>
+
+let cases = 0;
+
+window.onload = () => {
+update();
+show();
+};
+
+function reportCase(){
+
+let disease = document.getElementById("disease").value;
+
+if(cases < 100){
+
+cases += 10;
+
+update();
+
+save(cases,disease);
+
+}
+
+}
+
+function update(){
+
+let level = document.getElementById("level");
+let txt = document.getElementById("txt");
+let status = document.getElementById("status");
+let alert = document.getElementById("alert");
+
+level.style.height = cases + "%";
+txt.innerText = cases;
+
+if(cases >= 60){
+
+level.classList.add("high");
+status.innerText="HIGH";
+alert.classList.add("show");
+
+}else{
+
+level.classList.remove("high");
+status.innerText="LOW";
+alert.classList.remove("show");
+
+}
+
+}
+
+function save(v,disease){
+
+let data = JSON.parse(localStorage.getItem("health_logs")) || [];
+
+data.push({
+id:Date.now(),
+t:new Date().toLocaleTimeString(),
+v:v + "%",
+d:disease
+});
+
+localStorage.setItem("health_logs",JSON.stringify(data));
+
+show();
+
+}
+
+function show(){
+
+let data = JSON.parse(localStorage.getItem("health_logs")) || [];
+let table = document.getElementById("table");
+
+table.innerHTML="";
+
+data.forEach(i => {
+
+table.innerHTML += `
+<tr>
+<td>${i.t}</td>
+<td>${i.v}</td>
+<td>${i.d}</td>
+<td>
+<button class="btn" onclick="edit(${i.id})">✏️</button>
+<button class="btn" onclick="del(${i.id})">❌</button>
+</td>
+</tr>
+`;
+
+});
+
+}
+
+function edit(id){
+
+let data = JSON.parse(localStorage.getItem("health_logs"));
+
+let note = prompt("Edit disease:");
+
+if(note){
+
+let x = data.findIndex(l => l.id === id);
+
+data[x].d = note;
+
+localStorage.setItem("health_logs",JSON.stringify(data));
+
+show();
+
+}
+
+}
+
+function del(id){
+
+let data = JSON.parse(localStorage.getItem("health_logs"));
+
+data = data.filter(l => l.id !== id);
+
+localStorage.setItem("health_logs",JSON.stringify(data));
+
+show();
+
+}
+
+function clearAll(){
+
+if(confirm("Clear all records?")){
+
+localStorage.removeItem("health_logs");
+
+show();
+
+}
+
+}
+
+function reset(){
+
+cases = 0;
+update();
+
+}
+
+// theme toggle logic
+const themeToggle = document.getElementById('theme-toggle');
+function applyTheme(theme) {
+  document.body.classList.toggle('dark', theme === 'dark');
+  themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
+  localStorage.setItem('theme', theme);
+}
+
+themeToggle.addEventListener('click', () => {
+  const current = document.body.classList.contains('dark') ? 'dark' : 'light';
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+});
+
+// initialize theme from storage
+const saved = localStorage.getItem('theme') || 'light';
+applyTheme(saved);
+
+/* PWA SERVICE WORKER */
+
+if ("serviceWorker" in navigator) {
+navigator.serviceWorker
+.register("service-worker.js")
+.then(() => {
+console.log("Service Worker Registered");
+})
+.catch((error) => {
+console.log("Registration failed:", error);
+});
+}
+
+</script>
+
+</body>
+</html>
